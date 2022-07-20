@@ -50,4 +50,3 @@
 
 ## Programming
 * 1x ISP Programmer for AVR (https://www.fischl.de/usbasp/)
-
