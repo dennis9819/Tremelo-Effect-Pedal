@@ -6,8 +6,9 @@
 * 3x LED-Bezel 5mm chrome (https://www.musikding.de/LED-Fassung-5mm-Chrom-Innenreflektor)
 * 3x 5mm LED
 * 1x Alpha Potentiometer 16mm 50k log (https://www.musikding.de/Alpha-Potentiometer-16mm-50k-log)
-* 4x Alpha Potentiometer 16mm 10k lin (https://www.musikding.de/Alpha-Potentiometer-16mm-10k-lin)
+* 4x Alpha Potentiometer 16mm 10k lin (https://www.musikding.de/Alpha-Potentiometer-16mm-10k-lin) 25k and 50k is also okay!
 * 1x Toggleswitch 1 pole ON-OFF-ON (https://www.musikding.de/Kippschalter-1polig-ON-OFF-ON)
+* 2x 6,3mm Mono jack (https://www.musikding.de/63mm-Klinkenbuchse-offen-Mono)
 
 ## Circuit
 ### ICs
@@ -22,9 +23,13 @@
 * 5x 1uF (https://www.reichelt.de/elko-radial-1-0-f-250-v-rm-2-5-85-c-2000h-20--m-a-1-0u-250-p199804.html?&trstct=pol_3&nbc=1)
 * 1x 47uF 16V (https://www.reichelt.de/elko-radial-47-f-16-v-rm-2-0-85-c-2000h-20--rad-47-16-p15142.html?&trstct=pol_0&nbc=1)
 
+'Capacitors can be replaced by other capacitors with the same capacitance and a minimum voltage rating of 9V. C1,C7,C12 and C14 are part of the signal chain and should be of adequate quality.
+
 ### Film Capacitors
 * 3x 100nF (https://www.reichelt.de/mks2-pet-kondensator-100-nf-10-63-vdc-rm-5-mks2-63-100n-p12349.html?&trstct=pos_1&nbc=1)
 * 1x 330nF (https://www.reichelt.de/mks2-pet-kondensator-330-nf-5-63-vdc-rm-5-mks2-63-330n-p12355.html?&trstct=pol_0&nbc=1)
+
+'Capacitors can be replaced by other capacitors with the same capacitance and a minimum voltage rating of 9V
 
 ### Resistors
 * 1x 220R 5%
@@ -43,6 +48,6 @@
 ### Diode
 * 1x 1N5817 (Can be jumpered if required)
 
-
 ## Programming
 * 1x ISP Programmer for AVR (https://www.fischl.de/usbasp/)
+
