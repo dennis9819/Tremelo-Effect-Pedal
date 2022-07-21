@@ -47,29 +47,68 @@ static const uint8_t bumpLUT[256] PROGMEM = {
   50, 47, 44, 41, 38, 35, 32, 29, 25, 22, 19, 16, 13, 10, 7, 4
 };
 
+//Rate Modifier Ranges
+  /*  0
+   *  114
+   *  228
+   *  341
+   *  512
+   *  683
+   *  796
+   *  910
+   *  1024
+   */
+
+#define RM_NOTCHES_WIDTH 48
+
+#define RM_N0_MID 0
+#define RM_N1_MID 128
+#define RM_N2_MID 256
+#define RM_N3_MID 384
+#define RM_N4_MID 512
+#define RM_N5_MID 640
+#define RM_N6_MID 768
+#define RM_N7_MID 896
+#define RM_N8_MID 1024
+
+
+
+
 //Waveform Constants
 #define WF_SAW 1
 #define WF_SINE 2
 #define WF_SQUARE 4
 
+#define TS_TAP 0
+#define TS_POT 1
+
 int depth = 0;
-unsigned long delayTime = 1;
+unsigned long delayTime = 4000;
+unsigned long delayTimeOUT = 4000;
 uint8_t waveform = WF_SINE;
-
+uint8_t tempoSource = TS_TAP;
 uint8_t symetry = 127;
+double modifier = 4;
 uint16_t wfStep = 0;
+int potTempoLast = 0;
 
-unsigned long lastStep = millis();
-unsigned long lastTest = millis();
+
+
+double bpm = 60;
+
+unsigned long lastStep = lmicros();
+unsigned long lastTest = lmicros();
+
+unsigned long lastTap = 0;
 
 //IO Pin Definition
-#define PIN_A_RATE A1   //Pot Rate
-#define PIN_A_DEPTH A2  //Pot Depth
-#define PIN_A_SHAPE A0  //Pot Shape
+#define PIN_A_RATE A0   //Pot Rate 
+#define PIN_A_DEPTH A1  //Pot Depth
+#define PIN_A_SHAPE A2  //Pot Shape
 #define PIN_A_MUL A3    //Pot Clock-Modifier
 
-#define PIN_D_WF1 7     //Waveform Switch Pole 1
-#define PIN_D_WF2 10    //Waveform Switch Pole 2
+#define PIN_D_WF1 10     //Waveform Switch Pole 1
+#define PIN_D_WF2 7    //Waveform Switch Pole 2
 #define PIN_D_TAP 9     //Tap Tempo Push button
 #define PIN_D_MOD 8     //Tempo Modulation Switch
 
@@ -87,33 +126,98 @@ void setup() {
   pinMode(PIN_D_WF2, INPUT_PULLUP);
   pinMode(PIN_D_TAP, INPUT_PULLUP);
   pinMode(PIN_D_MOD, INPUT_PULLUP);
+
+  //enable pin change interrupt
+  GIMSK = 0b00100000;
+  PCMSK1 = 0b00000010;
+  MCUCR &= 0b00000011; 
+  MCUCR |= 0b00000010; 
 }
+
+uint8_t pstate = 0;
+
+ISR(PCINT1_vect) {
+  if (lastTap > lmicros() - 800000 ){ //debounce
+    return;
+  }
+  if (pstate == 0){
+    pstate = 1;  
+  }else{
+    pstate = 0;
+    return;  
+  }
+  
+  //delayTime = 500;
+  if (lastTap == 0){
+    lastTap = lmicros();
+  }else{
+    delayTime = (lmicros() - lastTap)/256;
+    lastTap = lmicros();
+    wfStep = 0;
+    tempoSource = TS_TAP;
+  }
+}
+
 
 //Read pots and switch state
 void getInput() {
-  depth = analogRead(PIN_A_DEPTH) / 4;
+  depth = 255 - (analogRead(PIN_A_DEPTH) / 4);
   //delayTime = map(analogRead(A1),0,1023,5000,20000);
-  delayTime = map(analogRead(PIN_A_RATE), 0, 1023, 0, 40000); ;
+  int raw = analogRead(PIN_A_RATE);
+  if (tempoSource == TS_POT){
+    delayTime = map(raw, 0, 1023, 0, 40000) * 8;
+
+    potTempoLast = raw;
+  }else{
+      if (potTempoLast < (raw - 16)) {tempoSource = TS_POT;}
+      if (potTempoLast > (raw + 16)) {tempoSource = TS_POT;}
+  }
   symetry = map(analogRead(PIN_A_SHAPE), 0, 1023, 4, 251); ;
 
-  waveform = WF_SINE;
+  //float secFracion = 1/((float)bpm*256);
+  //delayTime = secFracion*10000000;
+  
+  waveform = WF_SAW;
   if (digitalRead(PIN_D_WF1) == LOW) {
     waveform = WF_SQUARE;
   }
   if (digitalRead(PIN_D_WF2) == LOW) {
-    waveform = WF_SAW;
+    waveform = WF_SINE;
   }
+
+  //rate modifier
+  raw = analogRead(PIN_A_MUL);
+  if (raw >= 0 && raw <= RM_N0_MID + RM_NOTCHES_WIDTH) {modifier = 16;}
+  if (raw >= RM_N1_MID - RM_NOTCHES_WIDTH && raw <= RM_N1_MID + RM_NOTCHES_WIDTH) {modifier = 8;}
+  if (raw >= RM_N2_MID - RM_NOTCHES_WIDTH && raw <= RM_N2_MID + RM_NOTCHES_WIDTH) {modifier = 4;}
+  if (raw >= RM_N3_MID - RM_NOTCHES_WIDTH && raw <= RM_N3_MID + RM_NOTCHES_WIDTH) {modifier = 2;}
+  if (raw >= RM_N4_MID - RM_NOTCHES_WIDTH && raw <= RM_N4_MID + RM_NOTCHES_WIDTH) {modifier = 1;}
+  if (raw >= RM_N5_MID - RM_NOTCHES_WIDTH && raw <= RM_N5_MID + RM_NOTCHES_WIDTH) {modifier = 0.5;}
+  if (raw >= RM_N6_MID - RM_NOTCHES_WIDTH && raw <= RM_N6_MID + RM_NOTCHES_WIDTH) {modifier = 0.25;}
+  if (raw >= RM_N7_MID - RM_NOTCHES_WIDTH && raw <= RM_N7_MID + RM_NOTCHES_WIDTH) {modifier = 0.125;}
+  if (raw >= RM_N8_MID && raw <= 1024) {modifier = 0.0625;}
+  
+  applySppedMod();
+  
+}
+
+void applySppedMod(){
+    if (digitalRead(PIN_D_MOD) == HIGH) {
+      delayTimeOUT = delayTime*modifier;
+    }else{
+      delayTimeOUT = delayTime;
+    }
 }
 
 void loop() {
-  unsigned long millisNow = lmicros() / 8;  //Timestamp NOW
+  unsigned long millisNow = lmicros() ;  //Timestamp NOW
 
-  if (lastTest + 100 < millisNow) {   //Get panel state every 100ms
+  if (lastTest < millisNow - 800) {   //Get panel state every 100ms
     lastTest = millisNow;
     getInput();
   }
 
-  if (lastStep < millisNow - delayTime) { //do waveform stuff
+  if (lastStep < millisNow - delayTimeOUT) { //do waveform stuff
     wfStep ++;
     if (wfStep > 255) wfStep = 0;
     lastStep = millisNow;
